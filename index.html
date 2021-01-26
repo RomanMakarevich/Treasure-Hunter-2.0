@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Treasure Hunter</title>
+</head>
+<script src="pixi/pixi.min.js"></script>
+<script src="keyboard.js"></script>
+<script src="hitTestRectangle.js"></script>
+<script src="Contact.js"></script>
+<body>
+<script type="text/javascript">
+    let loader = PIXI.loader,
+        Sprite = PIXI.Sprite,
+        resources = PIXI.loader.resources,
+        Container = PIXI.Container;
+
+
+    let app = new PIXI.Application({
+        width: 1024,
+        height: 1024,
+        antialias: true,
+        transparent: false,
+        resolution: 1
+    });
+
+    document.body.appendChild(app.view);
+
+    loader
+        .add("img/treasureHunter.json")
+        .add("img/leftWall.png")
+        .add("img/upWall.png")
+        .add("img/rightWall.png")
+        .add("img/downWall.png")
+        .add("img/aptechka.png")
+        .add("img/dot.png")
+        .load(setup);
+
+    let state,
+        texturess,
+        explorer,
+        walls,
+        gameScene,
+        wallsContainer,
+        treasure,
+        door,
+        aptechka,
+        blobs,
+        healthBar,
+        gameOverScene,
+        dots,
+        counter,
+        message;
+    walls = [];
+
+    function setup() {
+        gameScene = new Container;
+        app.stage.addChild(gameScene);
+
+        texturess = PIXI.loader.resources["img/treasureHunter.json"].textures;
+
+
+        let dungeon = new Sprite(texturess["dungeon.png"]);
+        dungeon.width = 1024;
+        dungeon.height = 1024;
+        gameScene.addChild(dungeon);
+
+        wallsContainer = new Container;
+        gameScene.addChild(wallsContainer);
+
+
+        let leftWall = new Sprite(PIXI.loader.resources["img/leftWall.png"].texture);
+        leftWall.width = 64;
+        leftWall.height = 1024;
+        walls.push(leftWall);
+        wallsContainer.addChild(leftWall);
+
+        let upWall = new Sprite(PIXI.loader.resources["img/upWall.png"].texture);
+        upWall.width = 896;
+        upWall.height = 64;
+        upWall.x = 65;
+        walls.push(upWall);
+        wallsContainer.addChild(upWall);
+
+        let rightWall = new Sprite(PIXI.loader.resources["img/rightWall.png"].texture);
+        rightWall.width = 64;
+        rightWall.height = 1024;
+        rightWall.x = 961;
+        walls.push(rightWall);
+        wallsContainer.addChild(rightWall);
+
+        let downWall = new Sprite(PIXI.loader.resources["img/downWall.png"].texture);
+        downWall.width = 896;
+        downWall.height = 64;
+        downWall.x = 65;
+        downWall.y = 961;
+        walls.push(downWall);
+        wallsContainer.addChild(downWall);
+
+        wallBuilder(65, 129, 320, 64, true);
+        wallBuilder(257, 257, 512, 64, true);
+        wallBuilder(65, 321, 64, 64, true);
+        wallBuilder(129, 449, 128, 64, true);
+        wallBuilder(65, 641, 128, 64, true);
+        wallBuilder(129, 769, 640, 64, true);
+        wallBuilder(385, 385, 256, 64, true);
+        wallBuilder(449, 641, 192, 64, true);
+        wallBuilder(641, 513, 192, 64, true);
+        wallBuilder(769, 705, 128, 64, true);
+        wallBuilder(449, 897, 64, 64, true);
+        wallBuilder(769, 65, 64, 320, false);
+        wallBuilder(257, 321, 64, 448, false);
+        wallBuilder(385, 449, 64, 256, false);
+        wallBuilder(641, 385, 64, 128, false);
+        wallBuilder(705, 577, 64, 192, false);
+
+        treasure = new Sprite(texturess["treasure.png"]);
+        treasure.x = 512;
+        treasure.y = 512;
+        gameScene.addChild(treasure);
+
+        door = new Sprite(texturess["door.png"]);
+        door.x = 80;
+        door.y = 33;
+        gameScene.addChild(door);
+
+        aptechka = new Sprite(PIXI.loader.resources["img/aptechka.png"].texture);
+        aptechka.width = 32;
+        aptechka.height = 32;
+        aptechka.x = 890;
+        aptechka.y = 128;
+        gameScene.addChild(aptechka);
+
+        blobs = [];
+
+        createBlob(512, 160, true);
+        createBlob(400, 160, false);
+        createBlob(600, 160, false);
+        createBlob(70, 400, false);
+        createBlob(70, 400, true);
+        createBlob(512, 512, true);
+        createBlob(512, 512, false);
+        createBlob(350, 512, false);
+        createBlob(800, 160, true);
+        createBlob(720, 450, false);
+        createBlob(800, 900, false);
+        createBlob(400, 900, false);
+        createBlob(600, 900, false);
+        createBlob(800, 512, true);
+        createBlob(200, 900, false);
+
+        dots = [];
+
+       /* for (let i = 0; i < 100; i++) {
+            createDot();
+        }
+*/
+        counter = 0;
+
+        healthBar = new PIXI.Container;
+        healthBar.position.set(app.stage.width - 180, 4);
+        gameScene.addChild(healthBar);
+
+        let innerBar = new PIXI.Graphics();
+        innerBar.beginFill(0x000000);
+        innerBar.drawRect(0, 0, 128, 8);
+        innerBar.endFill();
+        healthBar.addChild(innerBar);
+
+        let outerBar = new PIXI.Graphics();
+        outerBar.beginFill(0xFF3300);
+        outerBar.drawRect(0, 0, 128, 8);
+        outerBar.endFill();
+        healthBar.addChild(outerBar);
+
+        healthBar.outer = outerBar;
+
+        gameOverScene = new PIXI.Container;
+        app.stage.addChild(gameOverScene);
+        gameOverScene.visible = false;
+
+        let style = new PIXI.TextStyle({
+            fontFamily: "Futura",
+            fontSize: 64,
+            fill: "white"
+        });
+
+        message = new PIXI.Text("The End!", style);
+        message.x = app.stage.width/2 - message.width/2;
+        message.y = app.stage.height / 2 - 32;
+        gameOverScene.addChild(message);
+
+        explorer = new Sprite(texturess["explorer.png"]);
+        explorer.x = 100;
+        explorer.y = 100;
+        gameScene.addChild(explorer);
+
+        explorer.vx = 0;
+        explorer.vy = 0;
+
+        let left = keyboard(37),
+            up = keyboard(38),
+            right = keyboard(39),
+            down = keyboard(40);
+
+        let speed = 5;
+
+        left.press = () => {
+            explorer.vx = -1 * speed;
+            explorer.vy = 0;
+        }
+        left.release = () => {
+            if (!right.isDown && explorer.vy === 0) {
+                explorer.vx = 0;
+            }
+        }
+
+        right.press = () => {
+            explorer.vx = speed;
+            explorer.vy = 0;
+        }
+        right.release = () => {
+            if (!left.isDown && explorer.vy === 0) {
+                explorer.vx = 0;
+            }
+        }
+
+        up.press = () => {
+            explorer.vx = 0;
+            explorer.vy = -1 * speed;
+        }
+        up.release = () => {
+            if (!down.isDown && explorer.vx === 0) {
+                explorer.vy = 0;
+            }
+        }
+
+        down.press = () => {
+            explorer.vx = 0;
+            explorer.vy = speed;
+        }
+        down.release = () => {
+            if (!up.isDown && explorer.vx === 0) {
+                explorer.vy = 0;
+            }
+        }
+
+        state = play;
+        app.ticker.add(delta => gameLoop(delta));
+    }
+
+    function gameLoop(delta) {
+        state(delta);
+    }
+
+    function play() {
+        explorer.x += explorer.vx;
+        explorer.y += explorer.vy;
+        for (let i = 0; i < walls.length; i++) {
+            contact(explorer, walls[i]);
+        }
+
+
+        let explorerHit;
+
+        for (let i = 0; i < blobs.length; i++) {
+
+            let blobHitsWall;
+
+            blobs[i].y += blobs[i].vy;
+            blobs[i].x += blobs[i].vx;
+            for (let j = 0; j < walls.length; j++) {
+                blobHitsWall = contact(blobs[i], walls[j]);
+
+                if (blobHitsWall === "up" || blobHitsWall === "down") {
+                    blobs[i].vy *= -1;
+                }
+                if (blobHitsWall === "left" || blobHitsWall === "right") {
+                    blobs[i].vx *= -1;
+                }
+            }
+            if (hitTestRectangle(explorer, blobs[i])) {
+                explorerHit = true;
+            }
+        }
+        if (explorerHit) {
+            explorer.alpha = 0.5;
+
+            healthBar.outer.width -= 1;
+
+        } else {
+            explorer.alpha = 1;
+        }
+        if (hitTestRectangle(explorer, aptechka)){
+           if (aptechka.alpha === 1) {
+               healthBar.outer.width = 128;
+               aptechka.alpha = 0;
+           }
+        }
+
+        if (hitTestRectangle(explorer, treasure)) {
+            treasure.x = explorer.x + 8;
+            treasure.y = explorer.y + 8;
+        }
+
+        for (let i = 0; i < dots.length; i++) {
+            if (hitTestRectangle(explorer, dots[i])){
+                if (dots[i].alpha === 1){
+                    counter++;
+                    dots[i].alpha = 0;
+                }
+            }
+        }
+
+        if (healthBar.outer.width < 0) {
+            state = end;
+            message.text = "You lost!";
+        }
+
+        if (hitTestRectangle(treasure, door)) {
+            state = end;
+            message.text = "You won!";
+        }
+
+    }
+
+    function end() {
+        gameScene.visible = false;
+        gameOverScene.visible = true;
+    }
+
+    function wallBuilder(x, y, width, height, isHorizontally) {
+        if (isHorizontally) {
+            let wall = new Sprite(PIXI.loader.resources["img/upWall.png"].texture);
+            wall.x = x;
+            wall.y = y;
+            wall.width = width;
+            wall.height = height;
+            walls.push(wall);
+            wallsContainer.addChild(wall);
+        } else {
+            let wall = new Sprite(PIXI.loader.resources["img/leftWall.png"].texture);
+            wall.x = x;
+            wall.y = y;
+            wall.width = width;
+            wall.height = height;
+            walls.push(wall);
+            wallsContainer.addChild(wall);
+        }
+    }
+
+    let direction = 1;
+    let blobSpeed = 4;
+
+    function createBlob(x, y, isHorizontally) {
+
+        let blob = new Sprite(texturess["blob.png"]);
+        blob.x = x;
+        blob.y = y;
+
+        if (isHorizontally) {
+            blob.vx = blobSpeed * direction;
+            blob.vy = 0;
+        } else {
+            blob.vx = 0;
+            blob.vy = blobSpeed * direction;
+        }
+        direction *= -1;
+
+        blobs.push(blob);
+        gameScene.addChild(blob);
+    }
+
+    function createDot(){
+        let dot = new Sprite(PIXI.loader.resources["img/dot.png"].texture);
+        let isTrue = true;
+        let x,
+            y;
+        while (isTrue) {
+
+             x = randomInt(0, 1024);
+             y = randomInt(0, 1024);
+            isTrue = false;
+            for (let i = 0; i < walls.length; i++) {
+
+                if (isNotIncluded(walls[i], x, true) && isNotIncluded(walls[i], y, false) ||
+                    isNotIncluded(walls[i], x, true) ^ isNotIncluded(walls[i], y, false)){
+
+                }else {
+                    isTrue = true;
+                }
+            }
+        }
+
+        dot.x = x;
+        dot.y = y;
+        dots.push(dot);
+        gameScene.addChild(dot);
+
+    }
+
+    function isNotIncluded(wall, param, isX){
+        if (isX) {
+            if (param < wall.x -4 || param > wall.x + wall.width) {
+                return true;
+            } else {
+                return false;
+            }
+        }else if (!isX){
+            if (param < wall.y -4 || param > wall.y + wall.height) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    function randomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+
+</script>
+</body>
+</html>
