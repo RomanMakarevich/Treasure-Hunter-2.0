@@ -15,7 +15,6 @@
         resources = PIXI.loader.resources,
         Container = PIXI.Container;
 
-
     let app = new PIXI.Application({
         width: 1024,
         height: 1024,
@@ -33,7 +32,6 @@
         .add("img/rightWall.png")
         .add("img/downWall.png")
         .add("img/aptechka.png")
-        .add("img/dot.png")
         .load(setup);
 
     let state,
@@ -48,8 +46,6 @@
         blobs,
         healthBar,
         gameOverScene,
-        dots,
-        counter,
         message;
     walls = [];
 
@@ -59,7 +55,6 @@
 
         texturess = PIXI.loader.resources["img/treasureHunter.json"].textures;
 
-
         let dungeon = new Sprite(texturess["dungeon.png"]);
         dungeon.width = 1024;
         dungeon.height = 1024;
@@ -67,7 +62,6 @@
 
         wallsContainer = new Container;
         gameScene.addChild(wallsContainer);
-
 
         let leftWall = new Sprite(PIXI.loader.resources["img/leftWall.png"].texture);
         leftWall.width = 64;
@@ -148,14 +142,6 @@
         createBlob(600, 900, false);
         createBlob(800, 512, true);
         createBlob(200, 900, false);
-
-        dots = [];
-
-       /* for (let i = 0; i < 100; i++) {
-            createDot();
-        }
-*/
-        counter = 0;
 
         healthBar = new PIXI.Container;
         healthBar.position.set(app.stage.width - 180, 4);
@@ -260,7 +246,6 @@
             contact(explorer, walls[i]);
         }
 
-
         let explorerHit;
 
         for (let i = 0; i < blobs.length; i++) {
@@ -301,15 +286,6 @@
         if (hitTestRectangle(explorer, treasure)) {
             treasure.x = explorer.x + 8;
             treasure.y = explorer.y + 8;
-        }
-
-        for (let i = 0; i < dots.length; i++) {
-            if (hitTestRectangle(explorer, dots[i])){
-                if (dots[i].alpha === 1){
-                    counter++;
-                    dots[i].alpha = 0;
-                }
-            }
         }
 
         if (healthBar.outer.width < 0) {
@@ -370,56 +346,6 @@
         blobs.push(blob);
         gameScene.addChild(blob);
     }
-
-    function createDot(){
-        let dot = new Sprite(PIXI.loader.resources["img/dot.png"].texture);
-        let isTrue = true;
-        let x,
-            y;
-        while (isTrue) {
-
-             x = randomInt(0, 1024);
-             y = randomInt(0, 1024);
-            isTrue = false;
-            for (let i = 0; i < walls.length; i++) {
-
-                if (isNotIncluded(walls[i], x, true) && isNotIncluded(walls[i], y, false) ||
-                    isNotIncluded(walls[i], x, true) ^ isNotIncluded(walls[i], y, false)){
-
-                }else {
-                    isTrue = true;
-                }
-            }
-        }
-
-        dot.x = x;
-        dot.y = y;
-        dots.push(dot);
-        gameScene.addChild(dot);
-
-    }
-
-    function isNotIncluded(wall, param, isX){
-        if (isX) {
-            if (param < wall.x -4 || param > wall.x + wall.width) {
-                return true;
-            } else {
-                return false;
-            }
-        }else if (!isX){
-            if (param < wall.y -4 || param > wall.y + wall.height) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    function randomInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-
 </script>
 </body>
 </html>
